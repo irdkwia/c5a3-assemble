@@ -28,6 +28,8 @@ args = parser.parse_args()
 
 os.makedirs(args.output, exist_ok=True)
 
+CONST_SIZE = 2
+
 LIST_EXT = [".amr", ".bmp", ".gif", ".png", ".jpg", ".jpeg"]
 blocks_per_chunk = (args.size * 0x20000 - 0x800) // 0x400
 
@@ -68,32 +70,36 @@ def shrink(data):
 
 for k, v in blocks.get(0xFC30, {}).items():
     v = shrink(v)
-    off = 0x18 + 4 * args.size
-    maxsize = int.from_bytes(v[2 + args.size * 2 : 6 + args.size * 2], "little")
+    off = 0x18 + 4 * CONST_SIZE
+    maxsize = int.from_bytes(v[2 + CONST_SIZE * 2 : 6 + CONST_SIZE * 2], "little")
     out = bytearray()
     extend = True
     while extend:
-        while int.from_bytes(v[off : off + args.size * 2], "little") != (
-            1 << (args.size << 4)
+        while int.from_bytes(v[off : off + CONST_SIZE * 2], "little") != (
+            1 << (CONST_SIZE << 4)
         ) - 1 and off < len(v):
-            block_id = int.from_bytes(v[off : off + args.size * 2], "little")
+            block_id = int.from_bytes(v[off : off + CONST_SIZE * 2], "little")
             c = blocks.get(0xFFF0, {}).get(block_id, b"")
             if c == b"":
                 c = blocks.get(0xFFFC, {}).get(block_id, b"")
             if c == b"":
-                print("WARNING %d" % block_id)
+                print("WARNING: Missing block %d" % block_id)
                 c = bytes(0x400)
             out += c
-            off += args.size * 2
-        follow = int.from_bytes(v[: args.size * 2], "little")
-        if follow != (1 << (args.size << 4)) - 1:
-            v = shrink(blocks[0xFCF0][follow])
-            off = args.size * 2
+            off += CONST_SIZE * 2
+        follow = int.from_bytes(v[: CONST_SIZE * 2], "little")
+        if follow != (1 << (CONST_SIZE << 4)) - 1:
+            v = blocks[0xFCF0].get(follow, None)
+            if v is None:
+                extend = False
+            else:
+                v = shrink(v)
+                off = CONST_SIZE * 2
         else:
             extend = False
     if out[:3] == b"RFS" and not args.raw:
         out = out[0x30:]
-    if int.from_bytes(out[:4], "little") in [3, 5, 7] and not args.raw:
+    if int.from_bytes(out[:4], "little") in [3, 5, 6, 7] and not args.raw:
         size = int.from_bytes(out[0x10:0x14], "little")
         fn = out[0x16:0x48].decode("utf-16-le").replace("\x00", "")
         header = 0x1C08 if any(fn.endswith(x) for x in LIST_EXT) else 0
