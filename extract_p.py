@@ -29,7 +29,17 @@ args = parser.parse_args()
 os.makedirs(args.output, exist_ok=True)
 
 CONST_SIZE = 2
-
+INVALID_CHARS = {
+    60: "＜",
+    62: "＞",
+    58: "：",
+    34: "”",
+    47: "／",
+    92: "＼",
+    124: "｜",
+    63: "？",
+    42: "＊",
+}
 LIST_EXT = [".amr", ".bmp", ".gif", ".png", ".jpg", ".jpeg"]
 blocks_per_chunk = (args.size * 0x20000 - 0x800) // 0x400
 
@@ -101,7 +111,12 @@ for k, v in blocks.get(0xFC30, {}).items():
         out = out[0x30:]
     if int.from_bytes(out[:4], "little") in [3, 5, 6, 7] and not args.raw:
         size = int.from_bytes(out[0x10:0x14], "little")
-        fn = out[0x16:0x48].decode("utf-16-le").replace("\x00", "")
+        fn = (
+            out[0x16:0x48]
+            .decode("utf-16-le")
+            .replace("\x00", "")
+            .translate(INVALID_CHARS)
+        )
         header = 0x1C08 if any(fn.endswith(x) for x in LIST_EXT) else 0
         with open(os.path.join(args.output, "%04d_%s" % (k, fn)), "wb") as file:
             file.write(out[0x80 + header : 0x80 + header + size])

@@ -27,6 +27,19 @@ parser.add_argument(
 args = parser.parse_args()
 
 os.makedirs(args.output, exist_ok=True)
+
+INVALID_CHARS = {
+    60: "＜",
+    62: "＞",
+    58: "：",
+    34: "”",
+    47: "／",
+    92: "＼",
+    124: "｜",
+    63: "？",
+    42: "＊",
+}
+
 blocks_per_chunk = (args.size * 0x20000 - 0x400) // 0x400
 
 with open(args.input, "rb") as file:
@@ -84,7 +97,12 @@ for k, v in blocks.get(0xFC30, {}).items():
     if int.from_bytes(out[:4], "little") in [3, 5, 7] and not args.raw:
         header = 0x1C08 * out[0xE]
         size = int.from_bytes(out[0x10:0x14], "little")
-        fn = out[0x16:0x48].decode("utf-16-le").replace("\x00", "")
+        fn = (
+            out[0x16:0x48]
+            .decode("utf-16-le")
+            .replace("\x00", "")
+            .translate(INVALID_CHARS)
+        )
         with open(os.path.join(args.output, "%04d_%s" % (k, fn)), "wb") as file:
             file.write(out[0x68 + header : 0x68 + header + size])
     else:
