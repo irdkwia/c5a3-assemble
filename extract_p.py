@@ -59,7 +59,6 @@ with open(args.input, "rb") as file:
         search = 0
         if int.from_bytes(data[4:6], "little") == 0xC5A3:
             exid = int.from_bytes(data[10:12], "little")
-            print(hex(addr))
             if exid != 0xFFFF:
                 exid *= blocks_per_chunk
                 conflicts[exid] = conflicts.get(exid, 0x10000)
