@@ -13,7 +13,14 @@ parser.add_argument(
 parser.add_argument(
     "-s",
     "--size",
-    help="Chunk size (*0x20000).",
+    help="Chunk size (*0x20000). Defaults to 0x20000",
+    default=0x20000,
+    type=int,
+)
+parser.add_argument(
+    "-w",
+    "--width",
+    help="Block IDs width (*2). Defaults to 1",
     default=1,
     type=int,
 )
@@ -28,7 +35,6 @@ args = parser.parse_args()
 
 os.makedirs(args.output, exist_ok=True)
 
-CONST_SIZE = 2
 INVALID_CHARS = {
     60: "＜",
     62: "＞",
@@ -53,6 +59,7 @@ with open(args.input, "rb") as file:
         search = 0
         if int.from_bytes(data[4:6], "little") == 0xC5A3:
             exid = int.from_bytes(data[10:12], "little")
+            print(hex(addr))
             if exid != 0xFFFF:
                 exid *= blocks_per_chunk
                 conflicts[exid] = conflicts.get(exid, 0x10000)
@@ -80,15 +87,15 @@ def shrink(data):
 
 for k, v in blocks.get(0xFC30, {}).items():
     v = shrink(v)
-    off = 0x18 + 4 * CONST_SIZE
-    maxsize = int.from_bytes(v[2 + CONST_SIZE * 2 : 6 + CONST_SIZE * 2], "little")
+    off = 0x18 + 4 * args.width
+    maxsize = int.from_bytes(v[2 + args.width * 2 : 6 + args.width * 2], "little")
     out = bytearray()
     extend = True
     while extend:
-        while int.from_bytes(v[off : off + CONST_SIZE * 2], "little") != (
-            1 << (CONST_SIZE << 4)
+        while int.from_bytes(v[off : off + args.width * 2], "little") != (
+            1 << (args.width << 4)
         ) - 1 and off < len(v):
-            block_id = int.from_bytes(v[off : off + CONST_SIZE * 2], "little")
+            block_id = int.from_bytes(v[off : off + args.width * 2], "little")
             c = blocks.get(0xFFF0, {}).get(block_id, b"")
             if c == b"":
                 c = blocks.get(0xFFFC, {}).get(block_id, b"")
@@ -96,15 +103,15 @@ for k, v in blocks.get(0xFC30, {}).items():
                 print("WARNING: Missing block %d" % block_id)
                 c = bytes(0x400)
             out += c
-            off += CONST_SIZE * 2
-        follow = int.from_bytes(v[: CONST_SIZE * 2], "little")
-        if follow != (1 << (CONST_SIZE << 4)) - 1:
+            off += args.width * 2
+        follow = int.from_bytes(v[: args.width * 2], "little")
+        if follow != (1 << (args.width << 4)) - 1:
             v = blocks[0xFCF0].get(follow, None)
             if v is None:
                 extend = False
             else:
                 v = shrink(v)
-                off = CONST_SIZE * 2
+                off = args.width * 2
         else:
             extend = False
     if out[:3] == b"RFS" and not args.raw:
