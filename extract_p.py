@@ -46,6 +46,7 @@ INVALID_CHARS = {
     63: "？",
     42: "＊",
 }
+INVALID_CHARS.update({x: "_" for x in range(32)})
 LIST_EXT = [".amr", ".bmp", ".gif", ".png", ".jpg", ".jpeg"]
 blocks_per_chunk = (args.size * 0x20000 - 0x800) // 0x400
 
@@ -122,6 +123,8 @@ for k, v in blocks.get(0xFC30, {}).items():
             .decode("utf-16-le")
             .replace("\x00", "")
             .translate(INVALID_CHARS)
+            .strip()
+            .rstrip(". ")
         )
         header = 0x1C08 if any(fn.endswith(x) for x in LIST_EXT) else 0
         with open(os.path.join(args.output, "%04d_%s" % (k, fn)), "wb") as file:
