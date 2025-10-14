@@ -13,8 +13,8 @@ parser.add_argument(
 parser.add_argument(
     "-s",
     "--size",
-    help="Chunk size (*0x20000). Defaults to 0x20000",
-    default=0x20000,
+    help="Chunk size (*0x20000). Defaults to 1",
+    default=1,
     type=int,
 )
 parser.add_argument(
