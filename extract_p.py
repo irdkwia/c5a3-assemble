@@ -126,7 +126,7 @@ for k, v in blocks.get(0xFC30, {}).items():
             .strip()
             .rstrip(". ")
         )
-        header = 0x1C08 if any(fn.endswith(x) for x in LIST_EXT) else 0
+        header = 0x1C08 if any(fn.lower().endswith(x) for x in LIST_EXT) else 0
         with open(os.path.join(args.output, "%04d_%s" % (k, fn)), "wb") as file:
             file.write(out[0x80 + header : 0x80 + header + size])
     else:
