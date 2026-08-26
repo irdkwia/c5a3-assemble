@@ -7,4 +7,5 @@ Phones all have different chunk sizes and width, here are listed all options to 
 - 810p: `-s 1 -w 2`
 - 820p: `-s 1 -w 2`
 - 822p: `-s 1 -w 2`
+- 830p: `-s 1 -w 2`
 - 840p: `-s 2 -w 2`
