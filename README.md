@@ -11,3 +11,4 @@ Phones all have different chunk sizes and width, here are listed all options to 
 - 831p: `-s 1 -w 2`
 - 840p: `-s 2 -w 2`
 - 841p: `-s 2 -w 2`
+- 002p: `-s 2 -w 2`
