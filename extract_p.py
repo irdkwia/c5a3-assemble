@@ -1,6 +1,20 @@
 import argparse
 import os
 
+CONFIGS = {
+    "705P": {"size": 1, "width": 1},
+    "706P": {"size": 1, "width": 1},
+    "810P": {"size": 1, "width": 2},
+    "820P": {"size": 1, "width": 2},
+    "821P": {"size": 1, "width": 2},
+    "822P": {"size": 1, "width": 2},
+    "830P": {"size": 1, "width": 2},
+    "831P": {"size": 1, "width": 2},
+    "840P": {"size": 2, "width": 2},
+    "841P": {"size": 2, "width": 2},
+    "002P": {"size": 2, "width": 2},
+}
+
 parser = argparse.ArgumentParser(description="Keitai P Structure")
 parser.add_argument("input")
 parser.add_argument("output")
@@ -13,7 +27,7 @@ parser.add_argument(
 parser.add_argument(
     "-s",
     "--size",
-    help="Chunk size (*0x20000). Defaults to 1",
+    help="Chunk size multiplier (*0x20000). Defaults to 1",
     default=1,
     type=int,
 )
@@ -30,10 +44,25 @@ parser.add_argument(
     help="Use referenced file sizes.",
     action=argparse.BooleanOptionalAction,
 )
+parser.add_argument(
+    "-c",
+    "--config",
+    help="Choose configuration. The size and width options will be overwritten.",
+    choices=CONFIGS.keys(),
+    type=str,
+    default=None,
+)
 
 args = parser.parse_args()
 
 os.makedirs(args.output, exist_ok=True)
+
+if args.config is None:
+    SIZE = args.size
+    WIDTH = args.width
+else:
+    SIZE = CONFIGS[args.config]["size"]
+    WIDTH = CONFIGS[args.config]["width"]
 
 INVALID_CHARS = {
     60: "＜",
@@ -48,12 +77,12 @@ INVALID_CHARS = {
 }
 INVALID_CHARS.update({x: "_" for x in range(32)})
 LIST_EXT = [".amr", ".bmp", ".gif", ".png", ".jpg", ".jpeg"]
-blocks_per_chunk = (args.size * 0x20000 - 0x800) // 0x400
+blocks_per_chunk = (SIZE * 0x20000 - 0x800) // 0x400
 
 with open(args.input, "rb") as file:
     blocks = {}
     conflicts = {}
-    data = file.read(args.size * 0x20000)
+    data = file.read(SIZE * 0x20000)
     addr = 0
     while len(data) > 0:
         match = 0
@@ -74,8 +103,8 @@ with open(args.input, "rb") as file:
                             blocks[blty] = blocks.get(blty, {})
                             blocks[blty][exid] = inner
                         exid += 1
-        data = file.read(args.size * 0x20000)
-        addr += args.size * 0x20000
+        data = file.read(SIZE * 0x20000)
+        addr += SIZE * 0x20000
 
 
 def shrink(data):
@@ -87,15 +116,15 @@ def shrink(data):
 
 for k, v in blocks.get(0xFC30, {}).items():
     v = shrink(v)
-    off = 0x18 + 4 * args.width
-    maxsize = int.from_bytes(v[2 + args.width * 2 : 6 + args.width * 2], "little")
+    off = 0x18 + 4 * WIDTH
+    maxsize = int.from_bytes(v[2 + WIDTH * 2 : 6 + WIDTH * 2], "little")
     out = bytearray()
     extend = True
     while extend:
-        while int.from_bytes(v[off : off + args.width * 2], "little") != (
-            1 << (args.width << 4)
+        while int.from_bytes(v[off : off + WIDTH * 2], "little") != (
+            1 << (WIDTH << 4)
         ) - 1 and off < len(v):
-            block_id = int.from_bytes(v[off : off + args.width * 2], "little")
+            block_id = int.from_bytes(v[off : off + WIDTH * 2], "little")
             c = blocks.get(0xFFF0, {}).get(block_id, b"")
             if c == b"":
                 c = blocks.get(0xFFFC, {}).get(block_id, b"")
@@ -103,15 +132,15 @@ for k, v in blocks.get(0xFC30, {}).items():
                 print("WARNING: Missing block %d" % block_id)
                 c = bytes(0x400)
             out += c
-            off += args.width * 2
-        follow = int.from_bytes(v[: args.width * 2], "little")
-        if follow != (1 << (args.width << 4)) - 1:
+            off += WIDTH * 2
+        follow = int.from_bytes(v[: WIDTH * 2], "little")
+        if follow != (1 << (WIDTH << 4)) - 1:
             v = blocks[0xFCF0].get(follow, None)
             if v is None:
                 extend = False
             else:
                 v = shrink(v)
-                off = args.width * 2
+                off = WIDTH * 2
         else:
             extend = False
     if out[:3] == b"RFS" and not args.raw:

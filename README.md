@@ -8,3 +8,9 @@ Phones all have different chunk sizes and width, here are listed all options to 
 - 820p: `-s 1 -w 2`
 - 822p: `-s 1 -w 2`
 - 840p: `-s 2 -w 2`
+
+## Configuration
+Use the `-c` / `--config` option to automatically set the chunk size and block ID width for a supported phone model.
+
+For a list of available configurations, see the help message:
+- `python extract_p.py -h`
